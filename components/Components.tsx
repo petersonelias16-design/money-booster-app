@@ -13,10 +13,10 @@ export const Button: React.FC<ButtonProps> = ({
   const baseStyles = "inline-flex items-center justify-center rounded-xl font-semibold transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none text-sm md:text-base py-3 px-6";
   
   const variants = {
-    primary: "bg-primary text-white hover:bg-[#5b2ee0] shadow-[0_0_15px_rgba(112,64,255,0.4)] border border-transparent",
-    secondary: "bg-transparent border border-surfaceLight text-white hover:bg-surfaceLight",
+    primary: "bg-primary text-white hover:bg-[#5b2ee0] shadow-lg shadow-primary/30 border border-transparent",
+    secondary: "bg-transparent border border-gray-200 dark:border-surfaceLight text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-surfaceLight",
     accent: "bg-accent text-secondary hover:bg-[#40e0a0] shadow-[0_0_15px_rgba(82,255,184,0.4)]",
-    ghost: "bg-transparent text-gray-400 hover:text-white",
+    ghost: "bg-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white",
     danger: "bg-red-600 text-white hover:bg-red-700 border border-transparent shadow-[0_0_15px_rgba(220,38,38,0.4)]",
   };
 
@@ -43,10 +43,10 @@ interface CardProps {
 
 export const Card: React.FC<CardProps> = ({ children, className = '', title, action }) => {
   return (
-    <div className={`bg-surface border border-surfaceLight rounded-2xl p-5 md:p-6 shadow-xl ${className}`}>
+    <div className={`bg-white dark:bg-surface border border-gray-200 dark:border-surfaceLight rounded-2xl p-5 md:p-6 shadow-lg dark:shadow-xl transition-colors duration-300 ${className}`}>
       {(title || action) && (
         <div className="flex justify-between items-center mb-4">
-          {title && <h3 className="text-lg font-heading font-semibold text-white">{title}</h3>}
+          {title && <h3 className="text-lg font-heading font-semibold text-gray-900 dark:text-white">{title}</h3>}
           {action && <div>{action}</div>}
         </div>
       )}
@@ -63,9 +63,9 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 export const Input: React.FC<InputProps> = ({ label, className = '', ...props }) => {
   return (
     <div className="w-full">
-      {label && <label className="block text-sm text-gray-400 mb-2 font-medium">{label}</label>}
+      {label && <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2 font-medium">{label}</label>}
       <input 
-        className={`w-full bg-secondary border border-surfaceLight rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors ${className}`}
+        className={`w-full bg-gray-50 dark:bg-secondary border border-gray-200 dark:border-surfaceLight rounded-xl px-4 py-3 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors ${className}`}
         {...props}
       />
     </div>
@@ -75,9 +75,9 @@ export const Input: React.FC<InputProps> = ({ label, className = '', ...props })
 // --- Badge ---
 export const Badge: React.FC<{ children: ReactNode, color?: 'green' | 'purple' | 'yellow' }> = ({ children, color = 'green' }) => {
   const colors = {
-    green: "bg-green-900/30 text-accent border-green-800",
-    purple: "bg-primary/20 text-primary border-indigo-900",
-    yellow: "bg-yellow-900/30 text-highlight border-yellow-800",
+    green: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-accent border-green-200 dark:border-green-800",
+    purple: "bg-purple-100 dark:bg-primary/20 text-primary border-purple-200 dark:border-indigo-900",
+    yellow: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-highlight border-yellow-200 dark:border-yellow-800",
   };
   
   return (
@@ -102,16 +102,16 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
         onClick={onClose}
       />
       
       {/* Content */}
-      <div className="relative bg-surface border border-surfaceLight rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
+      <div className="relative bg-white dark:bg-surface border border-gray-200 dark:border-surfaceLight rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
         {title && (
-          <h3 className="text-xl font-heading font-bold text-white mb-4">{title}</h3>
+          <h3 className="text-xl font-heading font-bold text-gray-900 dark:text-white mb-4">{title}</h3>
         )}
-        <div className="text-gray-300">
+        <div className="text-gray-600 dark:text-gray-300">
           {children}
         </div>
       </div>
