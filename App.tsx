@@ -236,6 +236,64 @@ const ToolsView = ({ user }: { user: UserProfile }) => {
   );
 };
 
+const TransactionHistory = ({ 
+  transactions, 
+  onDeleteRequest 
+}: { 
+  transactions: Transaction[], 
+  onDeleteRequest: (id: string) => void 
+}) => {
+  return (
+    <Card title="Histórico de Transações">
+      <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+        {transactions.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-10 text-gray-500 dark:text-gray-400">
+            <div className="w-16 h-16 bg-gray-100 dark:bg-surfaceLight rounded-full flex items-center justify-center mb-3">
+              <Wallet className="w-8 h-8 opacity-50" />
+            </div>
+            <p className="text-sm">Nenhuma transação registrada ainda.</p>
+          </div>
+        )}
+        {transactions.map(t => (
+          <div key={t.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-[#0D0D0D] rounded-xl border border-gray-200 dark:border-surfaceLight hover:border-primary/30 transition-all duration-200 group">
+            <div className="flex items-center gap-4">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                t.type === TransactionType.INCOME 
+                  ? 'bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-accent' 
+                  : 'bg-red-100 dark:bg-red-900/20 text-red-500 dark:text-red-400'
+              }`}>
+                {t.type === TransactionType.INCOME ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownRight className="w-5 h-5" />}
+              </div>
+              <div>
+                <p className="font-medium text-gray-900 dark:text-white">{t.description}</p>
+                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                  <span>{new Date(t.date).toLocaleDateString('pt-BR')}</span>
+                  <span>•</span>
+                  <span className={t.category === 'Geral' ? 'opacity-50' : 'text-primary'}>{t.category}</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+                <span className={`font-bold whitespace-nowrap ${
+                  t.type === TransactionType.INCOME ? 'text-green-600 dark:text-accent' : 'text-red-500 dark:text-red-400'
+                }`}>
+                  {t.type === TransactionType.INCOME ? '+' : '-'} R$ {t.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </span>
+                <button 
+                  onClick={() => onDeleteRequest(t.id)} 
+                  className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                  title="Excluir transação"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+};
+
 const FinanceView = ({ 
   transactions, stats, onAdd, onDelete, theme 
 }: { 
@@ -356,40 +414,10 @@ const FinanceView = ({
 
         {/* List */}
         <div className="lg:col-span-2">
-          <Card title="Histórico Recente">
-            <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
-              {transactions.length === 0 && (
-                <div className="text-center py-10 text-gray-500 text-sm">Nenhum registro encontrado.</div>
-              )}
-              {transactions.map(t => (
-                <div key={t.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-[#0D0D0D] rounded-xl border border-gray-200 dark:border-surfaceLight hover:border-gray-300 dark:hover:border-gray-700 transition-colors group">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      t.type === TransactionType.INCOME 
-                        ? 'bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-accent' 
-                        : 'bg-red-100 dark:bg-red-900/20 text-red-500 dark:text-red-400'
-                    }`}>
-                      {t.type === TransactionType.INCOME ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownRight className="w-5 h-5" />}
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">{t.description}</p>
-                      <p className="text-xs text-gray-500">{new Date(t.date).toLocaleDateString('pt-BR')}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                      <span className={`font-bold ${
-                        t.type === TransactionType.INCOME ? 'text-green-600 dark:text-accent' : 'text-red-500 dark:text-red-400'
-                      }`}>
-                        {t.type === TransactionType.INCOME ? '+' : '-'} R$ {t.amount.toFixed(2)}
-                      </span>
-                      <button onClick={() => setDeleteId(t.id)} className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
+          <TransactionHistory 
+            transactions={transactions} 
+            onDeleteRequest={setDeleteId} 
+          />
         </div>
       </div>
 
