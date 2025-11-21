@@ -19,7 +19,7 @@ import {
   X
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Button, Card, Input, Badge } from './components/Components';
+import { Button, Card, Input, Badge, Modal } from './components/Components';
 import { 
   ViewState, 
   UserProfile, 
@@ -234,6 +234,9 @@ const FinanceView = ({
   const [desc, setDesc] = useState('');
   const [amt, setAmt] = useState('');
   const [type, setType] = useState<TransactionType>(TransactionType.INCOME);
+  
+  // State for deletion modal
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -247,6 +250,13 @@ const FinanceView = ({
     });
     setDesc('');
     setAmt('');
+  };
+
+  const confirmDelete = () => {
+    if (deleteId) {
+      onDelete(deleteId);
+      setDeleteId(null);
+    }
   };
 
   const data = [
@@ -341,7 +351,7 @@ const FinanceView = ({
                       <span className={`font-bold ${t.type === TransactionType.INCOME ? 'text-accent' : 'text-red-400'}`}>
                         {t.type === TransactionType.INCOME ? '+' : '-'} R$ {t.amount.toFixed(2)}
                       </span>
-                      <button onClick={() => onDelete(t.id)} className="text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => setDeleteId(t.id)} className="text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Trash2 className="w-4 h-4" />
                       </button>
                   </div>
@@ -351,6 +361,19 @@ const FinanceView = ({
           </Card>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <Modal 
+        isOpen={!!deleteId} 
+        onClose={() => setDeleteId(null)}
+        title="Confirmar Exclusão"
+      >
+        <p className="mb-6">Tem certeza que deseja excluir esta transação? Essa ação não pode ser desfeita.</p>
+        <div className="flex justify-end gap-3">
+          <Button variant="ghost" onClick={() => setDeleteId(null)}>Cancelar</Button>
+          <Button variant="danger" onClick={confirmDelete}>Excluir</Button>
+        </div>
+      </Modal>
     </div>
   );
 };

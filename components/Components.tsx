@@ -2,7 +2,7 @@ import React, { ReactNode } from 'react';
 
 // --- Button ---
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'accent';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'accent' | 'danger';
   fullWidth?: boolean;
   icon?: ReactNode;
 }
@@ -17,6 +17,7 @@ export const Button: React.FC<ButtonProps> = ({
     secondary: "bg-transparent border border-surfaceLight text-white hover:bg-surfaceLight",
     accent: "bg-accent text-secondary hover:bg-[#40e0a0] shadow-[0_0_15px_rgba(82,255,184,0.4)]",
     ghost: "bg-transparent text-gray-400 hover:text-white",
+    danger: "bg-red-600 text-white hover:bg-red-700 border border-transparent shadow-[0_0_15px_rgba(220,38,38,0.4)]",
   };
 
   const widthStyle = fullWidth ? "w-full" : "";
@@ -83,5 +84,37 @@ export const Badge: React.FC<{ children: ReactNode, color?: 'green' | 'purple' |
     <span className={`px-3 py-1 rounded-full text-xs font-medium border ${colors[color]}`}>
       {children}
     </span>
+  );
+};
+
+// --- Modal ---
+interface ModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title?: string;
+  children: ReactNode;
+}
+
+export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+        onClick={onClose}
+      />
+      
+      {/* Content */}
+      <div className="relative bg-surface border border-surfaceLight rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
+        {title && (
+          <h3 className="text-xl font-heading font-bold text-white mb-4">{title}</h3>
+        )}
+        <div className="text-gray-300">
+          {children}
+        </div>
+      </div>
+    </div>
   );
 };
