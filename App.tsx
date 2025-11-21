@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   LayoutDashboard, 
@@ -679,7 +676,7 @@ export default function App() {
 
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 bg-white dark:bg-black/95 z-20 pt-20 px-6 space-y-4 md:hidden animate-in slide-in-from-top-10">
+        <div className="fixed inset-0 bg-white dark:bg-black/95 z-20 pt-20 px-6 space-y-4 md:hidden animate-fade-in">
           <NavItem icon={<LayoutDashboard size={20} />} label="Dashboard" target={ViewState.DASHBOARD} active={view === ViewState.DASHBOARD} />
           <NavItem icon={<Calculator size={20} />} label="Multiplicador" target={ViewState.TOOLS} active={view === ViewState.TOOLS} />
           <NavItem icon={<Wallet size={20} />} label="Finanças" target={ViewState.FINANCE} active={view === ViewState.FINANCE} />

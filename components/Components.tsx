@@ -128,12 +128,12 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
         onClick={onClose}
       />
       
       {/* Content */}
-      <div className="relative bg-white dark:bg-surface border border-gray-200 dark:border-surfaceLight rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
+      <div className="relative bg-white dark:bg-surface border border-gray-200 dark:border-surfaceLight rounded-2xl p-6 w-full max-w-md shadow-2xl animate-fade-in">
         {title && (
           <h3 className="text-xl font-heading font-bold text-gray-900 dark:text-white mb-4">{title}</h3>
         )}
