@@ -1,7 +1,13 @@
+
 export enum TransactionType {
   INCOME = 'INCOME',
   EXPENSE = 'EXPENSE',
 }
+
+export const TRANSACTION_CATEGORIES = [
+  'Vendas', 'Serviços', 'Salário', 'Investimentos', 'Alimentação', 
+  'Transporte', 'Moradia', 'Ferramentas', 'Marketing', 'Outros'
+];
 
 export interface Transaction {
   id: string;

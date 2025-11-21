@@ -1,3 +1,6 @@
+
+
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   LayoutDashboard, 
@@ -5,21 +8,23 @@ import {
   Wallet, 
   Award, 
   Settings, 
+  Lock, 
   Bell, 
+  ChevronRight, 
   ArrowUpRight, 
   ArrowDownRight,
   Plus,
   Trash2,
   Calculator,
+  Target,
   Sparkles,
   Menu,
   X,
   Sun,
-  Moon,
-  Calendar as CalendarIcon
+  Moon
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Button, Card, Input, Badge, Modal } from './components/Components';
+import { Button, Card, Input, Badge, Modal, Select } from './components/Components';
 import { 
   ViewState, 
   UserProfile, 
@@ -27,7 +32,8 @@ import {
   TransactionType, 
   DailyTask, 
   MOCK_TASKS,
-  DashboardStats
+  DashboardStats,
+  TRANSACTION_CATEGORIES
 } from './types';
 import { generateFinancialInsight } from './services/geminiService';
 
@@ -46,7 +52,7 @@ type Theme = 'light' | 'dark';
 // --- SUB-COMPONENTS ---
 
 const DashboardView = ({ 
-  user, stats, tasks, toggleTask, aiInsight, loadingAi, onGetInsight, setView 
+  user, stats, tasks, toggleTask, aiInsight, loadingAi, onGetInsight, setView, theme 
 }: {
   user: UserProfile;
   stats: DashboardStats;
@@ -56,6 +62,7 @@ const DashboardView = ({
   loadingAi: boolean;
   onGetInsight: () => void;
   setView: (v: ViewState) => void;
+  theme: Theme;
 }) => {
   return (
     <div className="space-y-6 animate-fade-in">
@@ -110,7 +117,8 @@ const DashboardView = ({
         {aiInsight ? (
            <div className="prose prose-sm">
              <p className="text-gray-700 dark:text-gray-300 italic">"{aiInsight}"</p>
-             <Button variant="ghost" size="sm" className="mt-2 text-xs pointer-events-none opacity-50">Dica gerada</Button>
+             {/* FIX: Removed 'text-xs' from className as it's now handled by the Button's 'size' prop. */}
+             <Button variant="ghost" size="sm" onClick={() => {}} className="mt-2 pointer-events-none opacity-50">Dica gerada</Button>
            </div>
         ) : (
           <div className="text-center py-4">
@@ -264,7 +272,7 @@ const TransactionHistory = ({
               <div>
                 <p className="font-medium text-gray-900 dark:text-white">{t.description}</p>
                 <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                  <span>{new Date(t.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</span>
+                  <span>{new Date(t.date).toLocaleDateString('pt-BR')}</span>
                   <span>•</span>
                   <span className={t.category === 'Geral' ? 'opacity-50' : 'text-primary'}>{t.category}</span>
                 </div>
@@ -292,37 +300,35 @@ const TransactionHistory = ({
 };
 
 const FinanceView = ({ 
-  transactions, 
-  onAdd, 
-  onDelete 
+  transactions, stats, onAdd, onDelete, theme 
 }: { 
   transactions: Transaction[], 
+  stats: DashboardStats, 
   onAdd: (t: Omit<Transaction, 'id'>) => void, 
-  onDelete: (id: string) => void
+  onDelete: (id: string) => void,
+  theme: Theme
 }) => {
   const [desc, setDesc] = useState('');
   const [amt, setAmt] = useState('');
   const [type, setType] = useState<TransactionType>(TransactionType.INCOME);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [category, setCategory] = useState('Geral');
   
-  // Modal State
+  // State for deletion modal
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!desc || !amt || !date) return;
-    
+    if (!desc || !amt) return;
     onAdd({
       description: desc,
       amount: parseFloat(amt),
       type: type,
-      date: new Date(date + 'T12:00:00Z').toISOString(), // Simple date handling
-      category: 'Geral'
+      date: new Date().toISOString(),
+      category: category
     });
-    
     setDesc('');
     setAmt('');
-    setDate(new Date().toISOString().split('T')[0]);
+    setCategory('Geral');
   };
 
   const confirmDelete = () => {
@@ -332,133 +338,110 @@ const FinanceView = ({
     }
   };
 
-  const chartData = useMemo(() => {
-    // Simple data aggregation for chart
-    const last7Days = [...Array(7)].map((_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      return d.toISOString().split('T')[0];
-    }).reverse();
-
-    return last7Days.map(date => {
-      const dayTrans = transactions.filter(t => t.date.startsWith(date));
-      const income = dayTrans.filter(t => t.type === 'INCOME').reduce((acc, t) => acc + t.amount, 0);
-      const expense = dayTrans.filter(t => t.type === 'EXPENSE').reduce((acc, t) => acc + t.amount, 0);
-      return {
-        name: new Date(date).toLocaleDateString('pt-BR', { weekday: 'short' }),
-        income,
-        expense
-      };
-    });
-  }, [transactions]);
+  const data = [
+    { name: 'Entradas', value: stats.income, color: '#10B981' }, // Green 500
+    { name: 'Saídas', value: stats.expense, color: '#EF4444' },
+  ];
+  
+  // Adjust chart colors for theme
+  const chartData = theme === 'dark' ? [
+    { name: 'Entradas', value: stats.income, color: '#52FFB8' },
+    { name: 'Saídas', value: stats.expense, color: '#EF4444' },
+  ] : data;
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col md:flex-row gap-6">
-        {/* Input Form */}
-        <div className="w-full md:w-1/3">
-          <Card title="Nova Transação">
-            <form onSubmit={handleAdd} className="space-y-4">
-              <Input 
-                label="Descrição" 
-                placeholder="Ex: Venda Consultoria, Mercado" 
-                value={desc}
-                onChange={(e) => setDesc(e.target.value)}
-              />
-              
-              <div className="grid grid-cols-2 gap-3">
-                 <Input 
-                    label="Valor (R$)" 
-                    type="number" 
-                    placeholder="0.00" 
-                    step="0.01"
-                    value={amt}
-                    onChange={(e) => setAmt(e.target.value)}
-                  />
-                  <div>
-                    <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2 font-medium">Data</label>
-                    <div className="relative">
-                      <input 
-                        type="date"
-                        className="w-full bg-gray-50 dark:bg-secondary border border-gray-200 dark:border-surfaceLight rounded-xl px-4 py-3 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors appearance-none"
-                        value={date}
-                        onChange={(e) => setDate(e.target.value)}
-                      />
-                    </div>
-                  </div>
-              </div>
+      <h2 className="text-2xl font-heading font-bold text-gray-900 dark:text-white">Controle Financeiro</h2>
 
-              <div className="flex gap-2 p-1 bg-gray-100 dark:bg-[#0D0D0D] rounded-xl">
-                <button 
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Form */}
+        <div className="lg:col-span-1 space-y-6">
+            <Card title="Nova Transação">
+              <form onSubmit={handleAdd} className="space-y-4">
+                <div className="flex gap-2 p-1 bg-gray-100 dark:bg-[#0D0D0D] rounded-lg">
+                  <button 
                   type="button"
                   onClick={() => setType(TransactionType.INCOME)}
-                  className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${type === TransactionType.INCOME ? 'bg-white dark:bg-surfaceLight text-green-600 dark:text-accent shadow-sm' : 'text-gray-500'}`}
-                >
-                  Entrada
-                </button>
-                <button 
+                  className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${type === TransactionType.INCOME ? 'bg-white dark:bg-surfaceLight text-green-600 dark:text-accent shadow-sm' : 'text-gray-500'}`}
+                  >
+                    Entrada
+                  </button>
+                  <button 
                   type="button"
                   onClick={() => setType(TransactionType.EXPENSE)}
-                  className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${type === TransactionType.EXPENSE ? 'bg-white dark:bg-surfaceLight text-red-500 shadow-sm' : 'text-gray-500'}`}
-                >
-                  Saída
-                </button>
-              </div>
+                  className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${type === TransactionType.EXPENSE ? 'bg-white dark:bg-surfaceLight text-red-500 dark:text-red-400 shadow-sm' : 'text-gray-500'}`}
+                  >
+                    Saída
+                  </button>
+                </div>
 
-              <Button type="submit" fullWidth icon={<Plus className="w-4 h-4" />}>
-                Adicionar
-              </Button>
-            </form>
-          </Card>
+                <Input 
+                  placeholder="Descrição (ex: Venda Consultoria)" 
+                  value={desc} 
+                  onChange={e => setDesc(e.target.value)} 
+                />
+                <Input 
+                  type="number" 
+                  placeholder="Valor (R$)" 
+                  value={amt} 
+                  onChange={e => setAmt(e.target.value)} 
+                />
+                <Select value={category} onChange={e => setCategory(e.target.value)}>
+                  <option value="Geral" disabled>Selecione uma categoria</option>
+                  {TRANSACTION_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                </Select>
+                <Button type="submit" fullWidth variant={type === TransactionType.INCOME ? 'accent' : 'primary'} className={type === TransactionType.EXPENSE ? '!bg-red-600 !shadow-none border-red-800 text-white' : ''}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Adicionar
+                </Button>
+              </form>
+            </Card>
+
+            <Card>
+              <div className="h-48 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData}>
+                      <XAxis dataKey="name" stroke={theme === 'dark' ? "#4B5563" : "#9CA3AF"} fontSize={12} />
+                      <YAxis stroke={theme === 'dark' ? "#4B5563" : "#9CA3AF"} fontSize={12} />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: theme === 'dark' ? '#1A1A1A' : '#FFFFFF', 
+                          border: theme === 'dark' ? '1px solid #292929' : '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                          color: theme === 'dark' ? '#fff' : '#111827'
+                        }}
+                        itemStyle={{ color: theme === 'dark' ? '#fff' : '#111827' }}
+                      />
+                      <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                        {chartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+              </div>
+            </Card>
         </div>
 
-        {/* Chart */}
-        <div className="w-full md:w-2/3">
-          <Card title="Fluxo da Semana" className="h-full min-h-[300px]">
-            <div className="h-64 w-full mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: '#6B7280', fontSize: 12 }} 
-                    dy={10}
-                  />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#1A1A1A', border: 'none', borderRadius: '12px', color: '#fff' }}
-                    itemStyle={{ color: '#fff' }}
-                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                  />
-                  <Bar dataKey="income" name="Entradas" fill="#52FFB8" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="expense" name="Saídas" fill="#EF4444" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
+        {/* List */}
+        <div className="lg:col-span-2">
+          <TransactionHistory 
+            transactions={transactions} 
+            onDeleteRequest={setDeleteId} 
+          />
         </div>
       </div>
-
-      {/* History Component */}
-      <TransactionHistory 
-        transactions={transactions} 
-        onDeleteRequest={(id) => setDeleteId(id)} 
-      />
 
       {/* Delete Confirmation Modal */}
       <Modal 
         isOpen={!!deleteId} 
         onClose={() => setDeleteId(null)}
-        title="Excluir Transação"
+        title="Confirmar Exclusão"
       >
         <p className="mb-6">Tem certeza que deseja excluir esta transação? Essa ação não pode ser desfeita.</p>
         <div className="flex justify-end gap-3">
-          <Button variant="secondary" onClick={() => setDeleteId(null)}>
-            Cancelar
-          </Button>
-          <Button variant="danger" onClick={confirmDelete}>
-            Excluir
-          </Button>
+          <Button variant="ghost" onClick={() => setDeleteId(null)}>Cancelar</Button>
+          <Button variant="danger" onClick={confirmDelete}>Excluir</Button>
         </div>
       </Modal>
     </div>
@@ -467,56 +450,47 @@ const FinanceView = ({
 
 const RewardsView = ({ user }: { user: UserProfile }) => {
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="text-center mb-8">
-        <h2 className="text-2xl font-heading font-bold text-gray-900 dark:text-white">Central de Recompensas</h2>
-        <p className="text-gray-500 dark:text-gray-400">Suas conquistas valem muito aqui.</p>
+    <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
+      <div className="text-center py-8">
+         <div className="inline-block p-1 rounded-full bg-gradient-to-tr from-primary via-purple-400 to-accent mb-4">
+           <div className="w-24 h-24 rounded-full bg-white dark:bg-[#0D0D0D] flex items-center justify-center">
+             <Award className="w-12 h-12 text-yellow-500 dark:text-highlight" />
+           </div>
+         </div>
+         <h2 className="text-3xl font-heading font-bold text-gray-900 dark:text-white">Central de Conquistas</h2>
+         <p className="text-gray-500 dark:text-gray-400 mt-2">Nível {user.level} • {user.xp} XP Total</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-         <Card>
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center text-primary">
-                <Award className="w-8 h-8" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Nível {user.level}</h3>
-                <p className="text-gray-500 text-sm">Empreendedor Iniciante</p>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300">
-                <span>XP Atual</span>
-                <span>{user.xp} / 1000</span>
-              </div>
-              <div className="w-full bg-gray-200 dark:bg-surfaceLight h-3 rounded-full overflow-hidden">
-                <div className="bg-gradient-to-r from-primary to-accent h-full rounded-full" style={{ width: `${(user.xp / 1000) * 100}%` }} />
-              </div>
-              <p className="text-xs text-gray-500 mt-2 text-center">Faltam {1000 - user.xp} XP para o próximo nível</p>
-            </div>
+         <Card title="Próxima Conquista" className="border-yellow-500/20 dark:border-highlight/20">
+           <div className="flex items-center gap-4 mb-4">
+             <div className="w-12 h-12 bg-gray-100 dark:bg-surfaceLight rounded-lg flex items-center justify-center">
+               <Target className="w-6 h-6 text-gray-400" />
+             </div>
+             <div>
+               <h4 className="font-bold text-gray-900 dark:text-white">Mestre da Poupança</h4>
+               <p className="text-xs text-gray-500">Economize R$ 1.000 em um mês</p>
+             </div>
+           </div>
+           <div className="w-full bg-gray-200 dark:bg-surfaceLight h-2 rounded-full overflow-hidden">
+             <div className="bg-yellow-500 dark:bg-highlight h-full rounded-full" style={{ width: '45%' }} />
+           </div>
+           <p className="text-right text-xs text-yellow-600 dark:text-highlight mt-2">45%</p>
          </Card>
 
-         <Card title="Conquistas Recentes">
+         <Card title="Ranking Pessoal">
             <div className="space-y-4">
-              <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-secondary rounded-xl border border-gray-200 dark:border-surfaceLight">
-                 <div className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900/20 rounded-full flex items-center justify-center text-highlight">
-                   <TrendingUp className="w-5 h-5" />
-                 </div>
-                 <div>
-                   <p className="font-medium text-gray-900 dark:text-white">Primeira Venda</p>
-                   <p className="text-xs text-gray-500">Registrou a primeira entrada</p>
-                 </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-secondary rounded-xl border border-gray-200 dark:border-surfaceLight opacity-50">
-                 <div className="w-10 h-10 bg-gray-200 dark:bg-surfaceLight rounded-full flex items-center justify-center text-gray-500">
-                   <Award className="w-5 h-5" />
-                 </div>
-                 <div>
-                   <p className="font-medium text-gray-900 dark:text-white">Mestre da Economia</p>
-                   <p className="text-xs text-gray-500">Reduziu 10% dos gastos</p>
-                 </div>
-              </div>
+              {[
+                { label: 'Consistência', val: '5 dias', icon: <TrendingUp className="w-4 h-4 text-green-600 dark:text-accent" /> },
+                { label: 'Maior Lucro', val: 'R$ 2.400', icon: <Wallet className="w-4 h-4 text-primary" /> },
+              ].map((item, i) => (
+                <div key={i} className="flex justify-between items-center border-b border-gray-200 dark:border-surfaceLight pb-2 last:border-0">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                    {item.icon} {item.label}
+                  </div>
+                  <span className="font-mono font-bold text-gray-900 dark:text-white">{item.val}</span>
+                </div>
+              ))}
             </div>
          </Card>
       </div>
@@ -525,80 +499,64 @@ const RewardsView = ({ user }: { user: UserProfile }) => {
 };
 
 const SettingsView = ({ 
-  user, 
-  theme, 
-  toggleTheme 
+  user, theme, toggleTheme 
 }: { 
   user: UserProfile; 
   theme: Theme; 
   toggleTheme: () => void;
 }) => {
   return (
-    <div className="space-y-6 animate-fade-in max-w-2xl mx-auto">
-      <h2 className="text-2xl font-heading font-bold text-gray-900 dark:text-white mb-6">Configurações</h2>
-
-      <Card title="Perfil">
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-16 h-16 bg-gradient-to-br from-primary to-purple-800 rounded-full flex items-center justify-center text-white text-xl font-bold">
-            {user.name.charAt(0)}
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">{user.name}</h3>
-            <p className="text-gray-500">{user.email}</p>
-          </div>
-        </div>
-        <Button variant="secondary" fullWidth>Editar Perfil</Button>
-      </Card>
-
+    <div className="max-w-2xl mx-auto animate-fade-in space-y-6">
       <Card title="Aparência">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-gray-100 dark:bg-surfaceLight rounded-lg text-gray-900 dark:text-white">
-              {theme === 'dark' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${theme === 'dark' ? 'bg-surfaceLight' : 'bg-gray-100'}`}>
+              {theme === 'dark' ? <Moon className="w-5 h-5 text-primary" /> : <Sun className="w-5 h-5 text-yellow-500" />}
             </div>
             <div>
               <p className="font-medium text-gray-900 dark:text-white">Tema do Aplicativo</p>
-              <p className="text-xs text-gray-500">{theme === 'dark' ? 'Modo Escuro Ativo' : 'Modo Claro Ativo'}</p>
+              <p className="text-xs text-gray-500">{theme === 'dark' ? 'Modo Escuro (Padrão)' : 'Modo Claro'}</p>
             </div>
           </div>
-          <Button variant="secondary" onClick={toggleTheme}>
-            Alternar
+          <Button variant="secondary" onClick={toggleTheme} className="min-w-[100px]">
+            {theme === 'dark' ? 'Mudar p/ Claro' : 'Mudar p/ Escuro'}
           </Button>
         </div>
       </Card>
 
-      <Card title="Dados">
+      <Card title="Perfil">
         <div className="space-y-4">
-          <Button variant="secondary" fullWidth>Fazer Backup</Button>
-          <Button variant="secondary" fullWidth>Restaurar Dados</Button>
+          <Input label="Nome Completo" defaultValue={user.name} />
+          <Input label="Email" defaultValue={user.email} disabled />
+          <Input label="Meta Mensal (R$)" type="number" defaultValue={user.monthlyGoal} />
+          <Button>Salvar Alterações</Button>
         </div>
       </Card>
-      
-      <div className="text-center pt-8">
-        <p className="text-xs text-gray-500">Money Booster v1.0.0</p>
-      </div>
     </div>
   );
 };
 
-// --- MAIN COMPONENT ---
+// --- MAIN APP ---
 
 export default function App() {
   const [view, setView] = useState<ViewState>(ViewState.DASHBOARD);
   const [user, setUser] = useState<UserProfile>(INITIAL_USER);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [tasks, setTasks] = useState<DailyTask[]>(MOCK_TASKS);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [aiInsight, setAiInsight] = useState<string>('');
   const [loadingAi, setLoadingAi] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  // Theme State
   const [theme, setTheme] = useState<Theme>('dark');
 
-  // Initialize Theme
+  // Toggle Theme Effect
   useEffect(() => {
+    const root = document.documentElement;
     if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
+      root.classList.add('dark');
     } else {
-      document.documentElement.classList.remove('dark');
+      root.classList.remove('dark');
     }
   }, [theme]);
 
@@ -606,169 +564,176 @@ export default function App() {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   };
 
-  // Initial Transaction Load (Mock)
-  useEffect(() => {
-    const saved = localStorage.getItem('mb_transactions');
-    if (saved) {
-      setTransactions(JSON.parse(saved));
-    } else {
-      setTransactions([
-        { id: '1', description: 'Venda Consultoria', amount: 1500, type: TransactionType.INCOME, date: new Date().toISOString(), category: 'Serviços' },
-        { id: '2', description: 'Software SaaS', amount: 299, type: TransactionType.EXPENSE, date: new Date().toISOString(), category: 'Ferramentas' },
-      ]);
-    }
-  }, []);
-
-  // Persist Transactions
-  useEffect(() => {
-    localStorage.setItem('mb_transactions', JSON.stringify(transactions));
-  }, [transactions]);
-
+  // Stats Calculation
   const stats = useMemo(() => {
     const income = transactions.filter(t => t.type === TransactionType.INCOME).reduce((acc, t) => acc + t.amount, 0);
     const expense = transactions.filter(t => t.type === TransactionType.EXPENSE).reduce((acc, t) => acc + t.amount, 0);
-    return {
-      income,
-      expense,
-      balance: income - expense,
-      dailyProgress: 45
-    };
+    const balance = income - expense;
+    
+    // Simple projection
+    const dailyAvg = transactions.length > 0 ? income / Math.max(1, new Date().getDate()) : 0;
+    const projected = dailyAvg * 30;
+
+    return { income, expense, balance, projected, dailyProgress: 0 };
   }, [transactions]);
 
-  const handleTransactionAdd = (t: Omit<Transaction, 'id'>) => {
-    const newTransaction = { ...t, id: crypto.randomUUID() };
-    setTransactions(prev => [newTransaction, ...prev]);
-    // Add XP logic here in real app
-    setUser(prev => ({ ...prev, xp: prev.xp + 10 }));
+  // --- HANDLERS ---
+
+  const addTransaction = (t: Omit<Transaction, 'id'>) => {
+    const newT: Transaction = { ...t, id: Date.now().toString() };
+    setTransactions([newT, ...transactions]);
+    addXp(10);
   };
 
-  const handleTransactionDelete = (id: string) => {
-    setTransactions(prev => prev.filter(t => t.id !== id));
+  const deleteTransaction = (id: string) => {
+    setTransactions(transactions.filter(t => t.id !== id));
   };
 
   const toggleTask = (id: string) => {
-    setTasks(prev => prev.map(t => {
+    setTasks(tasks.map(t => {
       if (t.id === id) {
-        if (!t.completed) setUser(u => ({ ...u, xp: u.xp + t.xpReward }));
+        if (!t.completed) addXp(t.xpReward);
         return { ...t, completed: !t.completed };
       }
       return t;
     }));
   };
 
-  const getAiInsight = async () => {
+  const addXp = (amount: number) => {
+    setUser(prev => {
+      const newXp = prev.xp + amount;
+      const newLevel = Math.floor(newXp / 100) + 1;
+      return { ...prev, xp: newXp, level: newLevel };
+    });
+  };
+
+  const handleGetInsight = async () => {
     setLoadingAi(true);
     const insight = await generateFinancialInsight(user, transactions, stats.balance);
     setAiInsight(insight);
     setLoadingAi(false);
   };
 
-  // Navigation Items
-  const navItems = [
-    { id: ViewState.DASHBOARD, label: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
-    { id: ViewState.TOOLS, label: 'Money Booster', icon: <TrendingUp className="w-5 h-5" /> },
-    { id: ViewState.FINANCE, label: 'Finanças', icon: <Wallet className="w-5 h-5" /> },
-    { id: ViewState.REWARDS, label: 'Recompensas', icon: <Award className="w-5 h-5" /> },
-    { id: ViewState.SETTINGS, label: 'Configurações', icon: <Settings className="w-5 h-5" /> },
-  ];
+  // --- RENDER LOGIC ---
+
+  const NavItem = ({ icon, label, target, active }: any) => (
+    <button
+      onClick={() => { setView(target); setMobileMenuOpen(false); }}
+      className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 w-full ${
+        active 
+          ? 'bg-primary text-white shadow-lg shadow-primary/20' 
+          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-surfaceLight hover:text-primary dark:hover:text-white'
+      }`}
+    >
+      {icon}
+      <span className="font-medium">{label}</span>
+      {active && <ChevronRight className="w-4 h-4 ml-auto opacity-50" />}
+    </button>
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0D0D0D] text-gray-900 dark:text-white font-sans transition-colors duration-300 flex">
-      {/* Mobile Nav Overlay */}
-      {isMobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
-
-      {/* Sidebar Navigation */}
-      <aside className={`
-        fixed md:sticky top-0 left-0 h-full w-64 bg-white dark:bg-black border-r border-gray-200 dark:border-surfaceLight z-50 transition-transform duration-300 ease-in-out
-        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-      `}>
-        <div className="p-6 border-b border-gray-200 dark:border-surfaceLight flex justify-between items-center">
-           <div className="flex items-center gap-2">
-             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-               <TrendingUp className="text-white w-5 h-5" />
-             </div>
-             <h1 className="font-heading font-bold text-xl tracking-tight text-gray-900 dark:text-white">Money<span className="text-primary">Booster</span></h1>
-           </div>
-           <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-gray-500">
-             <X className="w-6 h-6" />
-           </button>
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0D0D0D] text-gray-900 dark:text-white flex font-sans selection:bg-primary/30 selection:text-white transition-colors duration-300">
+      {/* Sidebar Desktop */}
+      <aside className="hidden md:flex w-64 flex-col border-r border-gray-200 dark:border-surfaceLight bg-white/80 dark:bg-surface/30 backdrop-blur-md fixed h-full z-20 transition-colors duration-300">
+        <div className="p-6 border-b border-gray-200 dark:border-surfaceLight">
+          <h1 className="text-xl font-heading font-bold flex items-center gap-2 text-gray-900 dark:text-white">
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white">
+              <TrendingUp className="w-5 h-5" />
+            </div>
+            Money <span className="text-primary">Booster</span>
+          </h1>
         </div>
-
-        <nav className="p-4 space-y-2">
-          {navItems.map(item => (
-            <button
-              key={item.id}
-              onClick={() => {
-                setView(item.id);
-                setIsMobileMenuOpen(false);
-              }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
-                view === item.id 
-                  ? 'bg-primary text-white shadow-lg shadow-primary/25' 
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-surfaceLight hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
-              {item.icon}
-              {item.label}
-            </button>
-          ))}
+        
+        <nav className="flex-1 p-4 space-y-2">
+          <NavItem icon={<LayoutDashboard size={20} />} label="Dashboard" target={ViewState.DASHBOARD} active={view === ViewState.DASHBOARD} />
+          <NavItem icon={<Calculator size={20} />} label="Multiplicador" target={ViewState.TOOLS} active={view === ViewState.TOOLS} />
+          <NavItem icon={<Wallet size={20} />} label="Finanças" target={ViewState.FINANCE} active={view === ViewState.FINANCE} />
+          <NavItem icon={<Award size={20} />} label="Recompensas" target={ViewState.REWARDS} active={view === ViewState.REWARDS} />
+          <div className="pt-4 mt-4 border-t border-gray-200 dark:border-surfaceLight">
+             <NavItem icon={<Settings size={20} />} label="Configurações" target={ViewState.SETTINGS} active={view === ViewState.SETTINGS} />
+          </div>
         </nav>
+
+        <div className="p-4 border-t border-gray-200 dark:border-surfaceLight">
+          <div className="bg-gradient-to-r from-primary/10 to-purple-100 dark:from-primary/20 dark:to-accent/10 p-4 rounded-xl border border-primary/10 dark:border-primary/20">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Assinatura Vitalícia</p>
+            <p className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1">
+              <Lock className="w-3 h-3 text-green-600 dark:text-accent" /> Premium Ativo
+            </p>
+          </div>
+        </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 min-w-0 overflow-hidden flex flex-col h-screen">
-        {/* Header */}
-        <header className="h-16 border-b border-gray-200 dark:border-surfaceLight bg-white/80 dark:bg-black/80 backdrop-blur-md flex items-center justify-between px-4 md:px-8 sticky top-0 z-30">
-          <button onClick={() => setIsMobileMenuOpen(true)} className="md:hidden p-2 text-gray-600 dark:text-gray-400">
-            <Menu className="w-6 h-6" />
-          </button>
-
-          <div className="flex-1 md:flex-none" /> {/* Spacer */}
-
-          <div className="flex items-center gap-4">
-            <button className="relative p-2 text-gray-500 hover:text-primary transition-colors">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-black"></span>
-            </button>
-            <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-primary to-purple-400 flex items-center justify-center text-white font-bold text-xs">
-              {user.name.charAt(0)}
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 w-full bg-white/90 dark:bg-surface/90 backdrop-blur-md z-30 border-b border-gray-200 dark:border-surfaceLight px-4 py-3 flex justify-between items-center transition-colors duration-300">
+         <div className="font-heading font-bold text-lg flex items-center gap-2 text-gray-900 dark:text-white">
+            <div className="w-7 h-7 bg-primary rounded-md flex items-center justify-center text-white">
+              <TrendingUp className="w-4 h-4" />
             </div>
+            Money Booster
+         </div>
+         <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 text-gray-900 dark:text-white">
+           {mobileMenuOpen ? <X /> : <Menu />}
+         </button>
+      </div>
+
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 bg-white dark:bg-black/95 z-20 pt-20 px-6 space-y-4 md:hidden animate-in slide-in-from-top-10">
+          <NavItem icon={<LayoutDashboard size={20} />} label="Dashboard" target={ViewState.DASHBOARD} active={view === ViewState.DASHBOARD} />
+          <NavItem icon={<Calculator size={20} />} label="Multiplicador" target={ViewState.TOOLS} active={view === ViewState.TOOLS} />
+          <NavItem icon={<Wallet size={20} />} label="Finanças" target={ViewState.FINANCE} active={view === ViewState.FINANCE} />
+          <NavItem icon={<Award size={20} />} label="Recompensas" target={ViewState.REWARDS} active={view === ViewState.REWARDS} />
+          <NavItem icon={<Settings size={20} />} label="Configurações" target={ViewState.SETTINGS} active={view === ViewState.SETTINGS} />
+        </div>
+      )}
+
+      {/* Main Content */}
+      <main className="flex-1 md:ml-64 min-h-screen pt-20 md:pt-0 transition-colors duration-300">
+        {/* Top Bar Desktop */}
+        <header className="hidden md:flex justify-between items-center px-8 py-5 border-b border-gray-200 dark:border-surfaceLight bg-white/50 dark:bg-[#0D0D0D]/50 backdrop-blur sticky top-0 z-10">
+          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
+            {view === ViewState.DASHBOARD && 'Visão Geral'}
+            {view === ViewState.TOOLS && 'Ferramentas'}
+            {view === ViewState.FINANCE && 'Fluxo de Caixa'}
+            {view === ViewState.REWARDS && 'Suas Conquistas'}
+            {view === ViewState.SETTINGS && 'Configurações'}
+          </h2>
+          <div className="flex items-center gap-4">
+             <button className="relative p-2 text-gray-400 hover:text-primary dark:hover:text-white transition-colors">
+               <Bell size={20} />
+               <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 dark:bg-accent rounded-full border border-white dark:border-[#0D0D0D]"></span>
+             </button>
+             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-blue-500 border-2 border-white dark:border-surfaceLight shadow-sm"></div>
           </div>
         </header>
 
-        {/* Scrollable Area */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar pb-20 md:pb-8">
-          <div className="max-w-6xl mx-auto">
-            {view === ViewState.DASHBOARD && (
-              <DashboardView 
-                user={user} 
-                stats={stats} 
-                tasks={tasks} 
-                toggleTask={toggleTask}
-                aiInsight={aiInsight}
-                loadingAi={loadingAi}
-                onGetInsight={getAiInsight}
-                setView={setView}
-              />
-            )}
-            {view === ViewState.TOOLS && <ToolsView user={user} />}
-            {view === ViewState.FINANCE && (
-              <FinanceView 
-                transactions={transactions} 
-                onAdd={handleTransactionAdd} 
-                onDelete={handleTransactionDelete}
-              />
-            )}
-            {view === ViewState.REWARDS && <RewardsView user={user} />}
-            {view === ViewState.SETTINGS && (
-              <SettingsView user={user} theme={theme} toggleTheme={toggleTheme} />
-            )}
-          </div>
+        <div className="p-4 md:p-8 pb-24">
+          {view === ViewState.DASHBOARD && (
+            <DashboardView 
+              user={user} 
+              stats={stats} 
+              tasks={tasks} 
+              toggleTask={toggleTask} 
+              aiInsight={aiInsight} 
+              loadingAi={loadingAi} 
+              onGetInsight={handleGetInsight} 
+              setView={setView}
+              theme={theme}
+            />
+          )}
+          {view === ViewState.TOOLS && <ToolsView user={user} />}
+          {view === ViewState.FINANCE && (
+            <FinanceView 
+              transactions={transactions} 
+              stats={stats} 
+              onAdd={addTransaction} 
+              onDelete={deleteTransaction} 
+              theme={theme}
+            />
+          )}
+          {view === ViewState.REWARDS && <RewardsView user={user} />}
+          {view === ViewState.SETTINGS && <SettingsView user={user} theme={theme} toggleTheme={toggleTheme} />}
         </div>
       </main>
     </div>

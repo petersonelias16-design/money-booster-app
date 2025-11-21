@@ -1,18 +1,15 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { Transaction, UserProfile } from '../types';
 
-const apiKey = process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
+// FIX: Aligned with @google/genai SDK guidelines by initializing the client directly with the API key from environment variables and removing the unnecessary check.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const generateFinancialInsight = async (
   user: UserProfile, 
   transactions: Transaction[], 
   balance: number
 ): Promise<string> => {
-  if (!apiKey) {
-    return "Chave de API não configurada. Por favor, verifique suas configurações.";
-  }
-
   // Prepare context for the AI
   const recentTransactions = transactions.slice(0, 5).map(t => 
     `${t.type === 'INCOME' ? '+' : '-'} R$${t.amount} (${t.description})`
